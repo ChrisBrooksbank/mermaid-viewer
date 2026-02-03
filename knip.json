@@ -1,0 +1,23 @@
+{
+    "entry": ["src/main.ts"],
+    "project": ["src/**/*.ts"],
+    "ignore": [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "src/api/**",
+        "src/core/**",
+        "src/types/**",
+        "src/utils/helpers.ts",
+        "src/utils/index.ts"
+    ],
+    "ignoreDependencies": [],
+    "ignoreExportsUsedInFile": true,
+    "paths": {
+        "@/*": ["src/*"],
+        "@api/*": ["src/api/*"],
+        "@core/*": ["src/core/*"],
+        "@utils/*": ["src/utils/*"],
+        "@config/*": ["src/config/*"],
+        "@types/*": ["src/types/*"]
+    }
+}

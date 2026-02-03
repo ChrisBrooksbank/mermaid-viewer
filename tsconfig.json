@@ -1,0 +1,40 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "strictNullChecks": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"],
+            "@api": ["src/api/index.ts"],
+            "@api/*": ["src/api/*"],
+            "@core": ["src/core/index.ts"],
+            "@core/*": ["src/core/*"],
+            "@utils": ["src/utils/index.ts"],
+            "@utils/*": ["src/utils/*"],
+            "@config": ["src/config/index.ts"],
+            "@config/*": ["src/config/*"],
+            "@types": ["src/types/index.ts"],
+            "@types/*": ["src/types/*"]
+        }
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}
