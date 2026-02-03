@@ -26,7 +26,7 @@ export default defineConfig({
             manifest: {
                 name: 'mermaid-app',
                 short_name: 'mermaid',
-                description: 'A TypeScript web application',
+                description: 'View and edit mermaid diagrams with pan, zoom, and drag',
                 theme_color: '#2563eb',
                 background_color: '#f5f5f5',
                 display: 'standalone',

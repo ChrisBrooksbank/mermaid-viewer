@@ -20,6 +20,8 @@
         "prepare": "husky"
     },
     "dependencies": {
+        "mermaid": "^11.12.2",
+        "panzoom": "^9.4.3",
         "zod": "^3.0.0"
     },
     "devDependencies": {

@@ -1,0 +1,273 @@
+/**
+ * Main styles with light/dark theme support
+ */
+
+/* CSS Custom Properties */
+:root {
+    --color-bg: #f5f5f5;
+    --color-surface: #ffffff;
+    --color-text: #1f2937;
+    --color-text-muted: #6b7280;
+    --color-border: #e5e7eb;
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-error: #dc2626;
+    --color-error-bg: #fef2f2;
+    --color-toolbar-bg: #ffffff;
+    --color-editor-bg: #ffffff;
+    --color-diagram-bg: #ffffff;
+    --divider-width: 6px;
+    --toolbar-height: 48px;
+}
+
+[data-theme='dark'] {
+    --color-bg: #111827;
+    --color-surface: #1f2937;
+    --color-text: #f9fafb;
+    --color-text-muted: #9ca3af;
+    --color-border: #374151;
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-error: #f87171;
+    --color-error-bg: #7f1d1d;
+    --color-toolbar-bg: #1f2937;
+    --color-editor-bg: #1f2937;
+    --color-diagram-bg: #1f2937;
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Base */
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+/* App Container */
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app.fullscreen .split-pane__editor {
+    display: none;
+}
+
+.app.fullscreen .split-pane__divider {
+    display: none;
+}
+
+.app.fullscreen .split-pane__diagram {
+    flex: 1;
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--color-toolbar-bg);
+    border-bottom: 1px solid var(--color-border);
+    height: var(--toolbar-height);
+    flex-shrink: 0;
+}
+
+.toolbar__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-right: auto;
+}
+
+.toolbar__group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+.toolbar__btn:hover {
+    background: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+.toolbar__btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar__btn--active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.toolbar__separator {
+    width: 1px;
+    height: 24px;
+    background: var(--color-border);
+    margin: 0 8px;
+}
+
+/* Split Pane */
+.split-pane {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.split-pane__editor {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+.split-pane__divider {
+    width: var(--divider-width);
+    background: var(--color-border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.split-pane__divider:hover,
+.split-pane__divider.dragging {
+    background: var(--color-primary);
+}
+
+.split-pane__diagram {
+    flex: 1;
+    min-width: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Editor */
+.editor {
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    border: none;
+    resize: none;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--color-editor-bg);
+    color: var(--color-text);
+    outline: none;
+}
+
+.editor::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* Diagram View */
+.diagram-view {
+    width: 100%;
+    height: 100%;
+    background: var(--color-diagram-bg);
+    overflow: hidden;
+    position: relative;
+}
+
+.diagram-view__container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.diagram-view__container svg {
+    max-width: none;
+    max-height: none;
+}
+
+.diagram-view__error {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    padding: 12px 16px;
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* Mobile Layout */
+@media (max-width: 768px) {
+    .split-pane {
+        flex-direction: column;
+    }
+
+    .split-pane__editor {
+        min-width: unset;
+        min-height: 150px;
+    }
+
+    .split-pane__divider {
+        width: 100%;
+        height: var(--divider-width);
+        cursor: row-resize;
+    }
+
+    .split-pane__diagram {
+        min-width: unset;
+        min-height: 200px;
+    }
+}
+
+/* Utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
