@@ -7,3 +7,6 @@ coverage/
 .DS_Store
 *.config.json
 !*.config.example.json
+
+# Local Netlify folder
+.netlify
