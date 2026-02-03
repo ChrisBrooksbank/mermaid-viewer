@@ -31,6 +31,7 @@ export function createDiagramView(): { element: HTMLElement; controls: DiagramVi
     let panzoomInstance: PanZoom | null = null;
     let diagramId = 0;
     let lastRenderedMarkdown = '';
+    let lastRenderedTheme = getState().theme;
 
     const initPanzoom = () => {
         if (panzoomInstance) {
@@ -87,9 +88,16 @@ export function createDiagramView(): { element: HTMLElement; controls: DiagramVi
         void renderDiagram(markdown);
     }, 300);
 
-    // Subscribe to state changes - only re-render if markdown changed
+    // Subscribe to state changes - re-render if markdown or theme changed
     subscribe(state => {
-        if (state.markdown !== lastRenderedMarkdown) {
+        const themeChanged = state.theme !== lastRenderedTheme;
+        const markdownChanged = state.markdown !== lastRenderedMarkdown;
+
+        if (themeChanged) {
+            lastRenderedTheme = state.theme;
+        }
+
+        if (markdownChanged || themeChanged) {
             debouncedRender(state.markdown);
         }
     });
@@ -109,16 +117,22 @@ export function createDiagramView(): { element: HTMLElement; controls: DiagramVi
             if (panzoomInstance) {
                 const transform = panzoomInstance.getTransform();
                 const newZoom = Math.min(MAX_ZOOM, transform.scale + ZOOM_STEP);
+                // Use screen coordinates (center of container on screen)
                 const rect = container.getBoundingClientRect();
-                panzoomInstance.zoomAbs(rect.width / 2, rect.height / 2, newZoom);
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                panzoomInstance.zoomAbs(centerX, centerY, newZoom);
             }
         },
         zoomOut: () => {
             if (panzoomInstance) {
                 const transform = panzoomInstance.getTransform();
                 const newZoom = Math.max(MIN_ZOOM, transform.scale - ZOOM_STEP);
+                // Use screen coordinates (center of container on screen)
                 const rect = container.getBoundingClientRect();
-                panzoomInstance.zoomAbs(rect.width / 2, rect.height / 2, newZoom);
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                panzoomInstance.zoomAbs(centerX, centerY, newZoom);
             }
         },
         fitToView: () => {

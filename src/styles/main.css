@@ -21,18 +21,18 @@
 }
 
 [data-theme='dark'] {
-    --color-bg: #111827;
-    --color-surface: #1f2937;
-    --color-text: #f9fafb;
-    --color-text-muted: #9ca3af;
-    --color-border: #374151;
-    --color-primary: #3b82f6;
-    --color-primary-hover: #2563eb;
-    --color-error: #f87171;
-    --color-error-bg: #7f1d1d;
-    --color-toolbar-bg: #1f2937;
-    --color-editor-bg: #1f2937;
-    --color-diagram-bg: #1f2937;
+    --color-bg: #0a0a0f;
+    --color-surface: #12121a;
+    --color-text: #e0e0ff;
+    --color-text-muted: #8888aa;
+    --color-border: #2a2a3a;
+    --color-primary: #00ffaa;
+    --color-primary-hover: #00cc88;
+    --color-error: #ff6b9d;
+    --color-error-bg: #2a1a2a;
+    --color-toolbar-bg: #12121a;
+    --color-editor-bg: #0d0d14;
+    --color-diagram-bg: #0a0a0f;
 }
 
 /* Reset */
@@ -210,14 +210,68 @@ body {
 .diagram-view__container {
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 20px;
+    overflow: visible;
 }
 
 .diagram-view__container svg {
     max-width: none;
     max-height: none;
+    display: block;
+}
+
+/* Dark mode mermaid diagram overrides - neon style */
+[data-theme='dark'] .diagram-view__container svg {
+    --mermaid-font-family: system-ui, sans-serif;
+}
+
+[data-theme='dark'] .diagram-view__container .node rect,
+[data-theme='dark'] .diagram-view__container .node polygon,
+[data-theme='dark'] .diagram-view__container .node circle,
+[data-theme='dark'] .diagram-view__container .node ellipse {
+    fill: #1a1a2e !important;
+    stroke: #00ffaa !important;
+    stroke-width: 2px !important;
+}
+
+[data-theme='dark'] .diagram-view__container .node .label,
+[data-theme='dark'] .diagram-view__container .nodeLabel,
+[data-theme='dark'] .diagram-view__container .label {
+    color: #e0e0ff !important;
+    fill: #e0e0ff !important;
+}
+
+[data-theme='dark'] .diagram-view__container .edgePath path,
+[data-theme='dark'] .diagram-view__container .flowchart-link {
+    stroke: #ff00ff !important;
+    stroke-width: 2px !important;
+}
+
+[data-theme='dark'] .diagram-view__container .arrowheadPath,
+[data-theme='dark'] .diagram-view__container marker path {
+    fill: #ff00ff !important;
+    stroke: #ff00ff !important;
+}
+
+[data-theme='dark'] .diagram-view__container .edgeLabel,
+[data-theme='dark'] .diagram-view__container .edgeLabel rect {
+    background-color: #0a0a0f !important;
+    fill: #0a0a0f !important;
+}
+
+[data-theme='dark'] .diagram-view__container .edgeLabel span,
+[data-theme='dark'] .diagram-view__container .edgeLabel p {
+    color: #00ffff !important;
+    fill: #00ffff !important;
+}
+
+[data-theme='dark'] .diagram-view__container .cluster rect {
+    fill: #12121a !important;
+    stroke: #4444ff !important;
+}
+
+[data-theme='dark'] .diagram-view__container text {
+    fill: #e0e0ff !important;
 }
 
 .diagram-view__error {
