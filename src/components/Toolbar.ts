@@ -16,6 +16,7 @@ const icons = {
     sun: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
     moon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
     download: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+    image: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
 };
 
 function createButton(icon: string, title: string, onClick: () => void): HTMLButtonElement {
@@ -42,6 +43,42 @@ function downloadSvg() {
     link.click();
 
     URL.revokeObjectURL(url);
+}
+
+function downloadPng() {
+    const svg = document.querySelector('#mermaid-container svg');
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+
+    const scale = 2;
+    const width = svg.clientWidth || (svg as SVGSVGElement).viewBox?.baseVal?.width || 800;
+    const height = svg.clientHeight || (svg as SVGSVGElement).viewBox?.baseVal?.height || 600;
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(blob => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'diagram.png';
+            link.click();
+            URL.revokeObjectURL(url);
+        }, 'image/png');
+    };
+    img.src = svgUri;
 }
 
 export function createToolbar(diagramControls: DiagramViewControls): HTMLElement {
@@ -86,8 +123,9 @@ export function createToolbar(diagramControls: DiagramViewControls): HTMLElement
     const separator2 = document.createElement('div');
     separator2.className = 'toolbar__separator';
 
-    // Download button
+    // Download buttons
     const downloadBtn = createButton(icons.download, 'Download SVG', downloadSvg);
+    const downloadPngBtn = createButton(icons.image, 'Download PNG', downloadPng);
 
     // Update button states on state change
     subscribe(state => {
@@ -105,6 +143,7 @@ export function createToolbar(diagramControls: DiagramViewControls): HTMLElement
     toolbar.appendChild(fullscreenBtn);
     toolbar.appendChild(separator2);
     toolbar.appendChild(downloadBtn);
+    toolbar.appendChild(downloadPngBtn);
 
     return toolbar;
 }

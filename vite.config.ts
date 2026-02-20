@@ -6,7 +6,7 @@ export default defineConfig({
     plugins: [
         tsconfigPaths(),
         VitePWA({
-            registerType: 'autoUpdate',
+            registerType: 'prompt',
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
                 runtimeCaching: [
