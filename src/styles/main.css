@@ -220,57 +220,57 @@ body {
     display: block;
 }
 
-/* Dark mode mermaid diagram overrides - neon style */
-[data-theme='dark'] .diagram-view__container svg {
+/* Dark mode mermaid diagram overrides - neon style (only when the diagram theme matches the app) */
+.diagram-view--neon .diagram-view__container svg {
     --mermaid-font-family: system-ui, sans-serif;
 }
 
-[data-theme='dark'] .diagram-view__container .node rect,
-[data-theme='dark'] .diagram-view__container .node polygon,
-[data-theme='dark'] .diagram-view__container .node circle,
-[data-theme='dark'] .diagram-view__container .node ellipse {
+.diagram-view--neon .diagram-view__container .node rect,
+.diagram-view--neon .diagram-view__container .node polygon,
+.diagram-view--neon .diagram-view__container .node circle,
+.diagram-view--neon .diagram-view__container .node ellipse {
     fill: #1a1a2e !important;
     stroke: #00ffaa !important;
     stroke-width: 2px !important;
 }
 
-[data-theme='dark'] .diagram-view__container .node .label,
-[data-theme='dark'] .diagram-view__container .nodeLabel,
-[data-theme='dark'] .diagram-view__container .label {
+.diagram-view--neon .diagram-view__container .node .label,
+.diagram-view--neon .diagram-view__container .nodeLabel,
+.diagram-view--neon .diagram-view__container .label {
     color: #e0e0ff !important;
     fill: #e0e0ff !important;
 }
 
-[data-theme='dark'] .diagram-view__container .edgePath path,
-[data-theme='dark'] .diagram-view__container .flowchart-link {
+.diagram-view--neon .diagram-view__container .edgePath path,
+.diagram-view--neon .diagram-view__container .flowchart-link {
     stroke: #ff00ff !important;
     stroke-width: 2px !important;
 }
 
-[data-theme='dark'] .diagram-view__container .arrowheadPath,
-[data-theme='dark'] .diagram-view__container marker path {
+.diagram-view--neon .diagram-view__container .arrowheadPath,
+.diagram-view--neon .diagram-view__container marker path {
     fill: #ff00ff !important;
     stroke: #ff00ff !important;
 }
 
-[data-theme='dark'] .diagram-view__container .edgeLabel,
-[data-theme='dark'] .diagram-view__container .edgeLabel rect {
+.diagram-view--neon .diagram-view__container .edgeLabel,
+.diagram-view--neon .diagram-view__container .edgeLabel rect {
     background-color: #0a0a0f !important;
     fill: #0a0a0f !important;
 }
 
-[data-theme='dark'] .diagram-view__container .edgeLabel span,
-[data-theme='dark'] .diagram-view__container .edgeLabel p {
+.diagram-view--neon .diagram-view__container .edgeLabel span,
+.diagram-view--neon .diagram-view__container .edgeLabel p {
     color: #00ffff !important;
     fill: #00ffff !important;
 }
 
-[data-theme='dark'] .diagram-view__container .cluster rect {
+.diagram-view--neon .diagram-view__container .cluster rect {
     fill: #12121a !important;
     stroke: #4444ff !important;
 }
 
-[data-theme='dark'] .diagram-view__container text {
+.diagram-view--neon .diagram-view__container text {
     fill: #e0e0ff !important;
 }
 
@@ -282,21 +282,194 @@ body {
     padding: 12px 16px;
     background: var(--color-error-bg);
     color: var(--color-error);
+    border: 1px solid var(--color-error);
     border-radius: 8px;
     font-size: 13px;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.diagram-view__error[hidden] {
+    display: none;
+}
+
+.diagram-view__error-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.diagram-view__error-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--color-error);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-error);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.diagram-view__error-btn:hover {
+    background: var(--color-error);
+    color: var(--color-surface);
+}
+
+.diagram-view__error-message {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     white-space: pre-wrap;
-    max-height: 120px;
+    word-break: break-word;
+}
+
+/* Drag and drop */
+.app.drop-active::after {
+    content: 'Drop a .mmd or .md file to open it';
+    position: fixed;
+    inset: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px dashed var(--color-primary);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+    color: var(--color-text);
+    font-size: 1.1rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 900;
+}
+
+/* Dropdown menus */
+.menu {
+    position: relative;
+}
+
+.menu__panel {
+    position: fixed;
+    min-width: 180px;
+    max-height: calc(100vh - var(--toolbar-height) - 16px);
     overflow-y: auto;
+    padding: 4px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    z-index: 800;
+}
+
+.menu__panel[hidden] {
+    display: none;
+}
+
+.menu__item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+    background: var(--color-bg);
+    outline: none;
+}
+
+/* Settings panel */
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 8px;
+    min-width: 220px;
+}
+
+.settings__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.settings__select {
+    padding: 6px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 14px;
+}
+
+/* Toasts */
+.toast {
+    position: fixed;
+    top: calc(var(--toolbar-height) + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 16px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    z-index: 1100;
+    animation: toast-in 0.15s ease-out;
+}
+
+.toast--error {
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
 }
 
 /* Mobile Layout */
 @media (max-width: 768px) {
+    .toolbar {
+        overflow-x: auto;
+        padding: 8px;
+    }
+
+    .toolbar__title {
+        display: none;
+    }
+
+    .toolbar__group:first-of-type {
+        margin-right: auto;
+    }
+
+    .toolbar__btn {
+        flex-shrink: 0;
+    }
+
+    .toolbar__separator {
+        margin: 0 2px;
+        flex-shrink: 0;
+    }
+
     .split-pane {
         flex-direction: column;
     }
 
     .split-pane__editor {
+        /* Override the desktop split width set inline */
+        width: 100% !important;
+        height: 40%;
         min-width: unset;
         min-height: 150px;
     }

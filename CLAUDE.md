@@ -30,7 +30,6 @@ npm run check          # Run all checks
 Path aliases configured:
 
 - `@/*` → `src/*`
-- `@api/*` → `src/api/*`
 - `@core/*` → `src/core/*`
 - `@utils/*` → `src/utils/*`
 - `@config/*` → `src/config/*`

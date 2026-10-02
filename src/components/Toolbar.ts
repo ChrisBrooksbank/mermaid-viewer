@@ -1,9 +1,13 @@
 /**
- * Toolbar component with zoom, theme, and fullscreen controls
+ * Toolbar component with file, zoom, theme, settings, and export controls
  */
 
-import type { DiagramViewControls } from '@/types/app';
+import type { DiagramViewControls, ExportBackground, FileActions, MermaidTheme } from '@/types/app';
 import { getState, setState, subscribe, applyTheme } from '@core/state';
+import { copyPng, copySvg, downloadPng, downloadSvg, resolveBackground } from '@core/export';
+import { TEMPLATES, type DiagramTemplate } from '@core/templates';
+import { createMenu } from './Menu';
+import { showToast } from './Toast';
 
 // SVG icons
 const icons = {
@@ -16,78 +20,147 @@ const icons = {
     sun: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
     moon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
     download: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
-    image: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+    open: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+    save: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
+    template: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+    share: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+    settings: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
-function createButton(icon: string, title: string, onClick: () => void): HTMLButtonElement {
+export interface ToolbarActions {
+    diagram: DiagramViewControls;
+    files: FileActions;
+    share: () => void;
+}
+
+function createButton(icon: string, title: string, onClick?: () => void): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.className = 'toolbar__btn';
     btn.innerHTML = icon;
     btn.title = title;
+    btn.setAttribute('aria-label', title);
     btn.type = 'button';
-    btn.addEventListener('click', onClick);
+    if (onClick) btn.addEventListener('click', onClick);
     return btn;
 }
 
-function downloadSvg() {
-    const svg = document.querySelector('#mermaid-container svg');
-    if (!svg) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgData], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'diagram.svg';
-    link.click();
-
-    URL.revokeObjectURL(url);
+function createSeparator(): HTMLElement {
+    const separator = document.createElement('div');
+    separator.className = 'toolbar__separator';
+    return separator;
 }
 
-function downloadPng() {
-    const svg = document.querySelector('#mermaid-container svg');
-    if (!svg) return;
+function createSelect<T extends string>(
+    label: string,
+    options: { value: T; label: string }[],
+    getValue: () => T,
+    onChange: (value: T) => void
+): HTMLLabelElement {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'settings__field';
 
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const svgUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+    const text = document.createElement('span');
+    text.textContent = label;
 
-    const scale = 2;
-    const width = svg.clientWidth || (svg as SVGSVGElement).viewBox?.baseVal?.width || 800;
-    const height = svg.clientHeight || (svg as SVGSVGElement).viewBox?.baseVal?.height || 600;
+    const select = document.createElement('select');
+    select.className = 'settings__select';
+    for (const option of options) {
+        const el = document.createElement('option');
+        el.value = option.value;
+        el.textContent = option.label;
+        select.appendChild(el);
+    }
+    select.value = getValue();
+    select.addEventListener('change', () => onChange(select.value as T));
+    subscribe(() => {
+        if (select.value !== getValue()) select.value = getValue();
+    });
 
-    const img = new Image();
-    img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = width * scale;
-        canvas.height = height * scale;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(blob => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'diagram.png';
-            link.click();
-            URL.revokeObjectURL(url);
-        }, 'image/png');
-    };
-    img.src = svgUri;
+    wrapper.appendChild(text);
+    wrapper.appendChild(select);
+    return wrapper;
 }
 
-export function createToolbar(diagramControls: DiagramViewControls): HTMLElement {
+function createSettingsPanel(): HTMLElement {
+    const panel = document.createElement('div');
+    panel.className = 'settings';
+
+    panel.appendChild(
+        createSelect<MermaidTheme>(
+            'Diagram theme',
+            [
+                { value: 'auto', label: 'Match app theme' },
+                { value: 'default', label: 'Default' },
+                { value: 'neutral', label: 'Neutral' },
+                { value: 'dark', label: 'Dark' },
+                { value: 'forest', label: 'Forest' },
+                { value: 'base', label: 'Base' },
+            ],
+            () => getState().mermaidTheme,
+            mermaidTheme => setState({ mermaidTheme })
+        )
+    );
+
+    panel.appendChild(
+        createSelect<ExportBackground>(
+            'Export background',
+            [
+                { value: 'transparent', label: 'Transparent' },
+                { value: 'white', label: 'White' },
+                { value: 'theme', label: 'Match app theme' },
+            ],
+            () => getState().exportBackground,
+            exportBackground => setState({ exportBackground })
+        )
+    );
+
+    return panel;
+}
+
+function loadTemplate(template: DiagramTemplate): void {
+    const current = getState().markdown.trim();
+    const isUnchangedTemplate = TEMPLATES.some(t => t.code.trim() === current);
+    if (current && !isUnchangedTemplate && !window.confirm('Replace the current diagram?')) {
+        return;
+    }
+    setState({ markdown: template.code });
+}
+
+async function runExport(action: (background: string | null) => unknown, done?: string) {
+    const { exportBackground, theme } = getState();
+    try {
+        await action(resolveBackground(exportBackground, theme));
+        if (done) showToast(done);
+    } catch (error) {
+        showToast(error instanceof Error ? error.message : String(error), 'error');
+    }
+}
+
+export function createToolbar(actions: ToolbarActions): HTMLElement {
+    const { diagram: diagramControls, files } = actions;
+
     const toolbar = document.createElement('div');
     toolbar.className = 'toolbar';
 
     const title = document.createElement('span');
     title.className = 'toolbar__title';
     title.textContent = 'Mermaid Viewer';
+
+    // File controls
+    const fileGroup = document.createElement('div');
+    fileGroup.className = 'toolbar__group';
+    fileGroup.appendChild(createButton(icons.open, 'Open File (Ctrl+O)', files.openFile));
+    fileGroup.appendChild(createButton(icons.save, 'Save as .mmd (Ctrl+S)', files.saveFile));
+    fileGroup.appendChild(
+        createMenu(
+            createButton(icons.template, 'Templates'),
+            TEMPLATES.map(template => ({
+                label: template.name,
+                onSelect: () => loadTemplate(template),
+            }))
+        )
+    );
+    fileGroup.appendChild(createButton(icons.share, 'Copy Share Link', actions.share));
 
     // Zoom controls
     const zoomGroup = document.createElement('div');
@@ -101,10 +174,10 @@ export function createToolbar(diagramControls: DiagramViewControls): HTMLElement
     );
     zoomGroup.appendChild(createButton(icons.fit, 'Fit to View', diagramControls.fitToView));
 
-    const separator1 = document.createElement('div');
-    separator1.className = 'toolbar__separator';
+    // View controls
+    const viewGroup = document.createElement('div');
+    viewGroup.className = 'toolbar__group';
 
-    // Theme toggle
     const themeBtn = createButton(
         getState().theme === 'dark' ? icons.sun : icons.moon,
         'Toggle Theme',
@@ -115,17 +188,23 @@ export function createToolbar(diagramControls: DiagramViewControls): HTMLElement
         }
     );
 
-    // Fullscreen toggle
     const fullscreenBtn = createButton(icons.fullscreen, 'Fullscreen (Ctrl+Enter)', () => {
         setState({ isFullscreen: !getState().isFullscreen });
     });
 
-    const separator2 = document.createElement('div');
-    separator2.className = 'toolbar__separator';
+    viewGroup.appendChild(themeBtn);
+    viewGroup.appendChild(fullscreenBtn);
+    viewGroup.appendChild(
+        createMenu(createButton(icons.settings, 'Settings'), createSettingsPanel())
+    );
 
-    // Download buttons
-    const downloadBtn = createButton(icons.download, 'Download SVG', downloadSvg);
-    const downloadPngBtn = createButton(icons.image, 'Download PNG', downloadPng);
+    // Export menu
+    const exportMenu = createMenu(createButton(icons.download, 'Export'), [
+        { label: 'Download SVG', onSelect: () => void runExport(downloadSvg) },
+        { label: 'Download PNG', onSelect: () => void runExport(downloadPng) },
+        { label: 'Copy SVG', onSelect: () => void runExport(copySvg, 'SVG copied') },
+        { label: 'Copy PNG', onSelect: () => void runExport(copyPng, 'PNG copied') },
+    ]);
 
     // Update button states on state change
     subscribe(state => {
@@ -134,16 +213,17 @@ export function createToolbar(diagramControls: DiagramViewControls): HTMLElement
         fullscreenBtn.title = state.isFullscreen
             ? 'Exit Fullscreen (Escape)'
             : 'Fullscreen (Ctrl+Enter)';
+        fullscreenBtn.setAttribute('aria-label', fullscreenBtn.title);
     });
 
     toolbar.appendChild(title);
+    toolbar.appendChild(fileGroup);
+    toolbar.appendChild(createSeparator());
     toolbar.appendChild(zoomGroup);
-    toolbar.appendChild(separator1);
-    toolbar.appendChild(themeBtn);
-    toolbar.appendChild(fullscreenBtn);
-    toolbar.appendChild(separator2);
-    toolbar.appendChild(downloadBtn);
-    toolbar.appendChild(downloadPngBtn);
+    toolbar.appendChild(createSeparator());
+    toolbar.appendChild(viewGroup);
+    toolbar.appendChild(createSeparator());
+    toolbar.appendChild(exportMenu);
 
     return toolbar;
 }

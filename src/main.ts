@@ -1,6 +1,7 @@
 import { loadConfig } from '@config';
 import { Logger } from '@utils/logger';
-import { initApp } from '@/components/App';
+import { clearShareHash, initApp } from '@/components/App';
+import { readSharedDiagram } from '@core/share';
 import { registerSW } from 'virtual:pwa-register';
 import '@/styles/main.css';
 
@@ -11,7 +12,9 @@ async function init() {
 
         const app = document.getElementById('app');
         if (app) {
-            initApp(app);
+            const sharedMarkdown = await readSharedDiagram(window.location.hash);
+            initApp(app, sharedMarkdown);
+            if (sharedMarkdown !== null) clearShareHash();
         } else {
             Logger.error('App container not found');
         }

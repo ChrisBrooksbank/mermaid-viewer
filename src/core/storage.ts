@@ -2,22 +2,34 @@
  * localStorage persistence for app state
  */
 
+import { z } from 'zod';
 import type { AppState } from '@/types/app';
 import { Logger } from '@utils/logger';
 
 const STORAGE_KEY = 'mermaid-pwa-state';
 
-interface StoredState {
-    markdown: string;
-    theme: 'light' | 'dark';
-    splitPosition: number;
-}
+// Each field falls back to undefined when invalid, so one bad value
+// doesn't throw away the rest of the saved state.
+const StoredStateSchema = z.object({
+    markdown: z.string().optional().catch(undefined),
+    theme: z.enum(['light', 'dark']).optional().catch(undefined),
+    mermaidTheme: z
+        .enum(['auto', 'default', 'neutral', 'dark', 'forest', 'base'])
+        .optional()
+        .catch(undefined),
+    exportBackground: z.enum(['transparent', 'white', 'theme']).optional().catch(undefined),
+    splitPosition: z.number().min(20).max(80).optional().catch(undefined),
+});
+
+type StoredState = z.infer<typeof StoredStateSchema>;
 
 export function saveToStorage(state: AppState): void {
     try {
         const toStore: StoredState = {
             markdown: state.markdown,
             theme: state.theme,
+            mermaidTheme: state.mermaidTheme,
+            exportBackground: state.exportBackground,
             splitPosition: state.splitPosition,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
@@ -31,22 +43,15 @@ export function loadFromStorage(): Partial<AppState> | null {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (!stored) return null;
 
-        const parsed = JSON.parse(stored) as StoredState;
-        return {
-            markdown: parsed.markdown,
-            theme: parsed.theme,
-            splitPosition: parsed.splitPosition,
-        };
+        const result = StoredStateSchema.safeParse(JSON.parse(stored));
+        if (!result.success) return null;
+
+        // Drop fields that failed validation
+        return Object.fromEntries(
+            Object.entries(result.data).filter(([, value]) => value !== undefined)
+        ) as Partial<AppState>;
     } catch (error) {
         Logger.warn('Failed to load state from localStorage:', String(error));
         return null;
-    }
-}
-
-export function clearStorage(): void {
-    try {
-        localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-        Logger.warn('Failed to clear localStorage:', String(error));
     }
 }

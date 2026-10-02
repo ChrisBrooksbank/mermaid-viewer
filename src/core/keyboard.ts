@@ -2,22 +2,33 @@
  * Keyboard shortcuts handler
  */
 
-import type { DiagramViewControls } from '@/types/app';
+import type { DiagramViewControls, FileActions } from '@/types/app';
 import { getState, setState } from './state';
 
 let diagramControls: DiagramViewControls | null = null;
+let fileActions: FileActions | null = null;
 
 export function setDiagramControls(controls: DiagramViewControls): void {
     diagramControls = controls;
 }
 
+export function setFileActions(actions: FileActions): void {
+    fileActions = actions;
+}
+
 export function initKeyboardShortcuts(): () => void {
     function handleKeyDown(e: KeyboardEvent): void {
+        // Escape to exit fullscreen (no modifier needed)
+        if (e.key === 'Escape' && getState().isFullscreen) {
+            setState({ isFullscreen: false });
+            return;
+        }
+
         const isMod = e.ctrlKey || e.metaKey;
 
         if (!isMod) return;
 
-        switch (e.key) {
+        switch (e.key.toLowerCase()) {
             case '=':
             case '+':
                 e.preventDefault();
@@ -31,15 +42,18 @@ export function initKeyboardShortcuts(): () => void {
                 e.preventDefault();
                 diagramControls?.resetZoom();
                 break;
-            case 'Enter':
+            case 'enter':
                 e.preventDefault();
                 setState({ isFullscreen: !getState().isFullscreen });
                 break;
-        }
-
-        // Escape to exit fullscreen (no modifier needed)
-        if (e.key === 'Escape' && getState().isFullscreen) {
-            setState({ isFullscreen: false });
+            case 's':
+                e.preventDefault();
+                fileActions?.saveFile();
+                break;
+            case 'o':
+                e.preventDefault();
+                fileActions?.openFile();
+                break;
         }
     }
 

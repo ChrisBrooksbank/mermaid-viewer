@@ -1,7 +1,3 @@
 {
-    "debug": false,
-    "api": {
-        "baseUrl": "https://api.example.com",
-        "timeout": 5000
-    }
+    "debug": false
 }
