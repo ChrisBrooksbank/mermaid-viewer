@@ -32,6 +32,13 @@ export default tseslint.config(
         },
     },
     {
+        // The logger is the one place that writes to the console
+        files: ['src/utils/logger.ts'],
+        rules: {
+            'no-console': 'off',
+        },
+    },
+    {
         ignores: ['dist/', 'coverage/', 'node_modules/'],
     }
 );

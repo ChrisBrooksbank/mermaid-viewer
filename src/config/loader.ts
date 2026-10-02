@@ -1,43 +1,42 @@
 /**
  * Configuration Loader
- * Loads and validates configuration from JSON file
+ * Loads and validates configuration from app.config.json
  */
 
+import { Logger } from '@utils/logger';
 import { ConfigSchema, ConfigValidationError } from './schema';
 import type { AppConfig } from './schema';
+
+// app.config.json is optional and gitignored, so it is bundled at build time
+// when present rather than fetched (which 404s on deployments without it).
+const configFiles = import.meta.glob<unknown>('/app.config.json', {
+    eager: true,
+    import: 'default',
+});
 
 let config: AppConfig | null = null;
 
 /**
- * Load configuration from JSON file
+ * Load and validate configuration, using defaults when no config file exists.
  * Call once at app startup
  */
-export async function loadConfig(path = '/app.config.json'): Promise<AppConfig> {
-    try {
-        const response = await fetch(path);
-        if (!response.ok) {
-            throw new Error(`Failed to load config: ${response.status}`);
-        }
-
-        const rawConfig = await response.json();
-        const result = ConfigSchema.safeParse(rawConfig);
-
-        if (!result.success) {
-            console.error('Config validation errors:', result.error.format());
-            throw new ConfigValidationError('Invalid configuration', result.error);
-        }
-
-        config = result.data;
-        return config;
-    } catch (error) {
-        if (error instanceof ConfigValidationError) {
-            throw error;
-        }
-        // Return defaults if config file not found
-        console.warn('Config file not found, using defaults');
+export async function loadConfig(
+    rawConfig: unknown = Object.values(configFiles)[0]
+): Promise<AppConfig> {
+    if (rawConfig === undefined) {
+        Logger.debug('No app.config.json, using defaults');
         config = ConfigSchema.parse({});
         return config;
     }
+
+    const result = ConfigSchema.safeParse(rawConfig);
+    if (!result.success) {
+        Logger.error('Config validation errors:', result.error.format());
+        throw new ConfigValidationError('Invalid configuration', result.error);
+    }
+
+    config = result.data;
+    return config;
 }
 
 /**

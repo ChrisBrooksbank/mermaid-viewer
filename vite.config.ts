@@ -35,5 +35,22 @@ export default defineConfig({
     build: {
         outDir: 'dist',
         sourcemap: true,
+        // Mermaid's Langium-based parser is a ~660 kB chunk it loads on demand
+        // for some diagram types; the app's own startup bundle is far smaller
+        chunkSizeWarningLimit: 700,
+        rolldownOptions: {
+            output: {
+                // Separate vendor chunks keep the app bundle small and let
+                // browsers cache libraries across app updates
+                codeSplitting: {
+                    groups: [
+                        {
+                            name: 'codemirror',
+                            test: /node_modules[\\/](@codemirror|@lezer|crelt|style-mod|w3c-keyname)[\\/]/,
+                        },
+                    ],
+                },
+            },
+        },
     },
 });
