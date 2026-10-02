@@ -7,12 +7,6 @@ import { z } from 'zod';
 
 export const ConfigSchema = z.object({
     debug: z.boolean().default(false),
-    api: z
-        .object({
-            baseUrl: z.string().url(),
-            timeout: z.number().positive().default(5000),
-        })
-        .optional(),
     // Add more config sections as needed
 });
 

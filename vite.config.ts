@@ -9,23 +9,10 @@ export default defineConfig({
             registerType: 'prompt',
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-                runtimeCaching: [
-                    {
-                        urlPattern: /^https:\/\/api\./i,
-                        handler: 'NetworkFirst',
-                        options: {
-                            cacheName: 'api-cache',
-                            expiration: {
-                                maxEntries: 50,
-                                maxAgeSeconds: 300,
-                            },
-                        },
-                    },
-                ],
             },
             manifest: {
-                name: 'mermaid-app',
-                short_name: 'mermaid',
+                name: 'Mermaid Viewer',
+                short_name: 'Mermaid',
                 description: 'View and edit mermaid diagrams with pan, zoom, and drag',
                 theme_color: '#2563eb',
                 background_color: '#f5f5f5',
