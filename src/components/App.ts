@@ -165,7 +165,7 @@ function createEditorLayout(app: HTMLElement): void {
 function createViewerLayout(app: HTMLElement): void {
     app.classList.add('app--viewer');
 
-    const { element: diagramView, controls } = createDiagramView({ fitOnRender: true });
+    const { element: diagramView, controls } = createDiagramView();
     setDiagramControls(controls);
 
     const openInEditor = () => {

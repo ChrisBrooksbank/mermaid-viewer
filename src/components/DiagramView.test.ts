@@ -8,7 +8,13 @@ const mermaidMock = vi.hoisted(() => ({
 
 vi.mock('mermaid', () => ({ default: mermaidMock }));
 vi.mock('panzoom', () => ({
-    default: vi.fn(() => ({ dispose: vi.fn(), getTransform: () => ({ scale: 1 }) })),
+    default: vi.fn(() => ({
+        dispose: vi.fn(),
+        on: vi.fn(),
+        zoomAbs: vi.fn(),
+        moveTo: vi.fn(),
+        getTransform: () => ({ scale: 1, x: 0, y: 0 }),
+    })),
 }));
 
 // State is module-level; each test gets fresh modules so views from
@@ -102,5 +108,17 @@ describe('DiagramView', () => {
 
         switchDocument(firstId);
         await vi.waitFor(() => expect(element.querySelector('#ok')).not.toBeNull());
+    });
+
+    it('offers templates when the diagram is empty', async () => {
+        setState({ markdown: '' });
+        const { element } = createDiagramView();
+        const empty = element.querySelector<HTMLElement>('.diagram-view__empty')!;
+        expect(empty.hidden).toBe(false);
+
+        empty.querySelector('button')!.click();
+        expect(getState().markdown).toMatch(/^flowchart/);
+        await vi.waitFor(() => expect(element.querySelector('#ok')).not.toBeNull());
+        expect(empty.hidden).toBe(true);
     });
 });

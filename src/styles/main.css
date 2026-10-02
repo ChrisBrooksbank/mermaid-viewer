@@ -149,6 +149,19 @@ body {
     border-color: var(--color-primary);
 }
 
+.toolbar__btn:focus-visible,
+.tabs__close:focus-visible,
+.tabs__add:focus-visible,
+.menu__item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+.toolbar__btn[aria-expanded='true'] {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
 .toolbar__btn:active {
     transform: scale(0.95);
 }
@@ -176,6 +189,7 @@ body {
 .split-pane__editor {
     display: flex;
     flex-direction: column;
+    width: var(--split-position, 40%);
     min-width: 200px;
     overflow: hidden;
 }
@@ -189,6 +203,7 @@ body {
 }
 
 .split-pane__divider:hover,
+.split-pane__divider:focus-visible,
 .split-pane__divider.dragging {
     background: var(--color-primary);
 }
@@ -329,14 +344,21 @@ body {
 /* Tabs */
 .tabs {
     display: flex;
-    align-items: stretch;
-    gap: 2px;
+    align-items: flex-end;
+    gap: 4px;
     padding: 4px 8px 0;
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border);
-    overflow-x: auto;
     flex-shrink: 0;
-    scrollbar-width: thin;
+}
+
+.tabs__list {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
 .tabs__tab {
@@ -481,6 +503,11 @@ body {
     fill: #0a0a0f !important;
 }
 
+.diagram-view--neon .diagram-view__container .labelBkg,
+.diagram-view--neon .diagram-view__container .edgeLabel p {
+    background-color: #0a0a0f !important;
+}
+
 .diagram-view--neon .diagram-view__container .edgeLabel span,
 .diagram-view--neon .diagram-view__container .edgeLabel p {
     color: #00ffff !important;
@@ -494,6 +521,71 @@ body {
 
 .diagram-view--neon .diagram-view__container text {
     fill: #e0e0ff !important;
+}
+
+.diagram-view__zoom {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    min-width: 52px;
+    padding: 4px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    opacity: 0.85;
+}
+
+.diagram-view__zoom:hover,
+.diagram-view__zoom:focus-visible {
+    border-color: var(--color-primary);
+    color: var(--color-text);
+    opacity: 1;
+}
+
+.diagram-view__zoom[hidden],
+.diagram-view__empty[hidden] {
+    display: none;
+}
+
+.diagram-view__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.diagram-view__empty-templates {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.diagram-view__empty-templates button {
+    padding: 6px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.diagram-view__empty-templates button:hover,
+.diagram-view__empty-templates button:focus-visible {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
 .diagram-view__error {
@@ -738,7 +830,7 @@ body {
 /* Toasts */
 .toast {
     position: fixed;
-    top: calc(var(--toolbar-height) + 12px);
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     padding: 10px 16px;
@@ -760,23 +852,22 @@ body {
 @keyframes toast-in {
     from {
         opacity: 0;
-        transform: translate(-50%, -6px);
+        transform: translate(-50%, 6px);
     }
 }
 
 /* Mobile Layout */
 @media (max-width: 768px) {
     .toolbar {
-        overflow-x: auto;
-        padding: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        height: auto;
+        gap: 4px 6px;
+        padding: 6px 8px;
     }
 
     .toolbar__title {
         display: none;
-    }
-
-    .toolbar__group:first-of-type {
-        margin-right: auto;
     }
 
     .toolbar__btn {
@@ -784,8 +875,7 @@ body {
     }
 
     .toolbar__separator {
-        margin: 0 2px;
-        flex-shrink: 0;
+        display: none;
     }
 
     .split-pane {
@@ -793,9 +883,8 @@ body {
     }
 
     .split-pane__editor {
-        /* Override the desktop split width set inline */
-        width: 100% !important;
-        height: 40%;
+        width: 100%;
+        height: var(--split-position, 40%);
         min-width: unset;
         min-height: 150px;
     }

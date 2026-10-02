@@ -94,6 +94,8 @@ export function initializeState({ sharedMarkdown, readOnly = false }: InitOption
 
     state = {
         ...defaults,
+        // First visit: follow the system colour scheme
+        theme: prefersDarkScheme() ? 'dark' : 'light',
         ...settings,
         documents,
         activeDocumentId: active.id,
@@ -109,6 +111,10 @@ export function initializeState({ sharedMarkdown, readOnly = false }: InitOption
 
     // Apply theme to document
     applyTheme(state.theme);
+}
+
+function prefersDarkScheme(): boolean {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
 export function applyTheme(theme: AppTheme): void {

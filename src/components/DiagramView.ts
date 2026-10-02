@@ -7,17 +7,25 @@ import panzoom, { type PanZoom } from 'panzoom';
 import type { AppState, DiagramViewControls } from '@/types/app';
 import { getState, resolveMermaidTheme, setState, subscribe } from '@core/state';
 import { parseMermaidError } from '@core/errors';
+import { TEMPLATES } from '@core/templates';
 import { Logger } from '@utils/logger';
 
 const ZOOM_STEP = 0.25;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 
+/** Templates offered when the diagram is empty */
+const QUICK_TEMPLATES = ['flowchart', 'sequence', 'class', 'gantt', 'mindmap'];
+
+/**
+ * How the diagram is kept in view until the user pans or zooms:
+ * 'auto' centres it (shrinking it to fit if needed), 'fill' scales it to fit.
+ */
+type FitMode = 'auto' | 'fill' | null;
+
 interface DiagramViewOptions {
     /** Called when the user asks to jump to the line an error points at */
     onGoToLine?: (line: number) => void;
-    /** Fit the diagram to the view after each render (view-only mode) */
-    fitOnRender?: boolean;
 }
 
 /** The app's neon styling only applies when the diagram theme follows the app theme */
@@ -41,7 +49,17 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
     errorDisplay.setAttribute('role', 'alert');
     errorDisplay.hidden = true;
 
+    const zoomBadge = document.createElement('button');
+    zoomBadge.type = 'button';
+    zoomBadge.className = 'diagram-view__zoom';
+    zoomBadge.title = 'Fit to view';
+    zoomBadge.hidden = true;
+
+    const emptyState = createEmptyState(getState().readOnly);
+
     view.appendChild(container);
+    view.appendChild(emptyState);
+    view.appendChild(zoomBadge);
     view.appendChild(errorDisplay);
 
     let panzoomInstance: PanZoom | null = null;
@@ -52,8 +70,18 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
     /** Document the currently displayed diagram belongs to */
     let displayedDocumentId: string | null = null;
     let renderTimer: ReturnType<typeof setTimeout> | undefined;
+    let fitMode: FitMode = 'auto';
+
+    const updateZoomBadge = () => {
+        zoomBadge.hidden = !panzoomInstance;
+        if (panzoomInstance) {
+            zoomBadge.textContent = `${Math.round(panzoomInstance.getTransform().scale * 100)}%`;
+        }
+    };
 
     const initPanzoom = () => {
+        // Keep the user's zoom and pan when the same diagram re-renders
+        const previous = panzoomInstance?.getTransform();
         if (panzoomInstance) {
             panzoomInstance.dispose();
         }
@@ -66,7 +94,15 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
                 smoothScroll: false,
                 zoomDoubleClickSpeed: 1,
             });
+            // Once the user drags, stop re-fitting the diagram for them
+            panzoomInstance.on('panstart', () => (fitMode = null));
+            panzoomInstance.on('transform', updateZoomBadge);
+            if (previous && !fitMode) {
+                panzoomInstance.zoomAbs(0, 0, previous.scale);
+                panzoomInstance.moveTo(previous.x, previous.y);
+            }
         }
+        updateZoomBadge();
     };
 
     const hideError = () => {
@@ -109,6 +145,7 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
         panzoomInstance = null;
         container.innerHTML = '';
         displayedDocumentId = null;
+        updateZoomBadge();
     };
 
     const renderDiagram = async (markdown: string) => {
@@ -116,6 +153,7 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
         const documentId = getState().activeDocumentId;
         lastRenderedMarkdown = markdown;
 
+        emptyState.hidden = markdown.trim() !== '';
         if (!markdown.trim()) {
             clearDiagram();
             hideError();
@@ -144,7 +182,7 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
 
             // Initialize panzoom on new SVG
             initPanzoom();
-            if (options.fitOnRender) controls.fitToView();
+            applyFit();
 
             Logger.debug('Diagram rendered successfully');
         } catch (error) {
@@ -175,73 +213,139 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
         if (state.activeDocumentId !== lastDocumentId) {
             // Switching diagrams: show the new one straight away
             lastDocumentId = state.activeDocumentId;
+            fitMode = 'auto';
             scheduleRender(state.markdown, 0);
         } else if (markdownChanged || themeChanged) {
             scheduleRender(state.markdown, 300);
         }
     });
 
+    /** Zoom about the centre of the view */
     const zoomTo = (scale: number) => {
-        if (!panzoomInstance) return;
-        // Use screen coordinates (center of container on screen)
+        const svg = container.querySelector('svg');
+        if (!panzoomInstance || !svg) return;
+        // panzoom takes the pivot relative to the SVG's untransformed position
         const rect = container.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        panzoomInstance.zoomAbs(centerX, centerY, scale);
+        const svgRect = svg.getBoundingClientRect();
+        const { x, y } = panzoomInstance.getTransform();
+        panzoomInstance.zoomAbs(
+            rect.left + rect.width / 2 - (svgRect.left - x),
+            rect.top + rect.height / 2 - (svgRect.top - y),
+            scale
+        );
+        updateZoomBadge();
+    };
+
+    /**
+     * Centre the diagram, scaled to fit the container (up to maxScale)
+     */
+    const fit = (maxScale: number) => {
+        const svg = container.querySelector('svg');
+        if (!panzoomInstance || !svg) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        const transform = panzoomInstance.getTransform();
+        if (svgRect.width === 0 || svgRect.height === 0 || containerRect.width === 0) return;
+
+        // The rect is already scaled and moved by the current transform
+        const width = svgRect.width / transform.scale;
+        const height = svgRect.height / transform.scale;
+        const layoutLeft = svgRect.left - transform.x;
+        const layoutTop = svgRect.top - transform.y;
+
+        const scale = Math.min(
+            maxScale,
+            Math.max(
+                MIN_ZOOM,
+                Math.min(containerRect.width / width, containerRect.height / height) * 0.9
+            )
+        );
+
+        panzoomInstance.zoomAbs(0, 0, scale);
+        panzoomInstance.moveTo(
+            containerRect.left + (containerRect.width - width * scale) / 2 - layoutLeft,
+            containerRect.top + (containerRect.height - height * scale) / 2 - layoutTop
+        );
+        updateZoomBadge();
+    };
+
+    const applyFit = () => {
+        if (fitMode) fit(fitMode === 'fill' ? MAX_ZOOM : 1);
     };
 
     const controls: DiagramViewControls = {
         resetZoom: () => {
-            if (panzoomInstance) {
-                panzoomInstance.moveTo(0, 0);
-                panzoomInstance.zoomAbs(0, 0, 1);
-            }
+            fitMode = null;
+            fit(1);
+            if (panzoomInstance && panzoomInstance.getTransform().scale !== 1) zoomTo(1);
         },
         zoomIn: () => {
             if (panzoomInstance) {
+                fitMode = null;
                 zoomTo(Math.min(MAX_ZOOM, panzoomInstance.getTransform().scale + ZOOM_STEP));
             }
         },
         zoomOut: () => {
             if (panzoomInstance) {
+                fitMode = null;
                 zoomTo(Math.max(MIN_ZOOM, panzoomInstance.getTransform().scale - ZOOM_STEP));
             }
         },
         fitToView: () => {
-            const svg = container.querySelector('svg');
-            if (!panzoomInstance || !svg) return;
-
-            const containerRect = container.getBoundingClientRect();
-            const svgRect = svg.getBoundingClientRect();
-            const transform = panzoomInstance.getTransform();
-            if (svgRect.width === 0 || svgRect.height === 0) return;
-
-            // The rect is already scaled and moved by the current transform
-            const width = svgRect.width / transform.scale;
-            const height = svgRect.height / transform.scale;
-            const layoutLeft = svgRect.left - transform.x;
-            const layoutTop = svgRect.top - transform.y;
-
-            const scale = Math.min(
-                MAX_ZOOM,
-                Math.max(
-                    MIN_ZOOM,
-                    Math.min(containerRect.width / width, containerRect.height / height) * 0.9
-                )
-            );
-
-            // Centre the scaled diagram in the container
-            panzoomInstance.zoomAbs(0, 0, scale);
-            panzoomInstance.moveTo(
-                containerRect.left + (containerRect.width - width * scale) / 2 - layoutLeft,
-                containerRect.top + (containerRect.height - height * scale) / 2 - layoutTop
-            );
+            fitMode = 'fill';
+            applyFit();
         },
     };
 
+    zoomBadge.addEventListener('click', controls.fitToView);
+
+    // Wheel and pinch zooms are the user's choice too
+    container.addEventListener('wheel', () => (fitMode = null), { passive: true });
+    container.addEventListener('touchstart', e => {
+        if (e.touches.length > 1) fitMode = null;
+    });
+    container.addEventListener('dblclick', () => (fitMode = null));
+
+    // Keep the diagram fitted as the pane resizes (split drag, fullscreen, window)
+    if (typeof ResizeObserver !== 'undefined') {
+        let resizeFrame = 0;
+        new ResizeObserver(() => {
+            cancelAnimationFrame(resizeFrame);
+            resizeFrame = requestAnimationFrame(applyFit);
+        }).observe(container);
+    }
+
     // Initial render
     view.classList.toggle('diagram-view--neon', usesNeonStyle(getState()));
+    emptyState.hidden = getState().markdown.trim() !== '';
     void renderDiagram(getState().markdown);
 
     return { element: view, controls };
+}
+
+function createEmptyState(readOnly: boolean): HTMLElement {
+    const empty = document.createElement('div');
+    empty.className = 'diagram-view__empty';
+
+    const message = document.createElement('p');
+    message.textContent = readOnly
+        ? 'This diagram is empty.'
+        : 'Type Mermaid syntax in the editor, or start from a template:';
+    empty.appendChild(message);
+
+    if (!readOnly) {
+        const buttons = document.createElement('div');
+        buttons.className = 'diagram-view__empty-templates';
+        for (const template of TEMPLATES.filter(t => QUICK_TEMPLATES.includes(t.id))) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = template.name;
+            btn.addEventListener('click', () => setState({ markdown: template.code }));
+            buttons.appendChild(btn);
+        }
+        empty.appendChild(buttons);
+    }
+
+    return empty;
 }

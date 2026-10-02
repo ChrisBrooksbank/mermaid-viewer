@@ -43,12 +43,26 @@ function startRename(label: HTMLElement, id: string, name: string): void {
 export function createTabs(): HTMLElement {
     const bar = document.createElement('div');
     bar.className = 'tabs';
-    bar.setAttribute('role', 'tablist');
-    bar.setAttribute('aria-label', 'Open diagrams');
+
+    // Tabs scroll; the "new" button stays visible beside them
+    const list = document.createElement('div');
+    list.className = 'tabs__list';
+    list.setAttribute('role', 'tablist');
+    list.setAttribute('aria-label', 'Open diagrams');
+
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'tabs__add';
+    add.textContent = '+';
+    add.title = 'New diagram';
+    add.setAttribute('aria-label', 'New diagram');
+    add.addEventListener('click', () => openDocument('Untitled'));
+
+    bar.append(list, add);
 
     const render = () => {
         const { documents, activeDocumentId } = getState();
-        bar.replaceChildren();
+        list.replaceChildren();
 
         for (const doc of documents) {
             const isActive = doc.id === activeDocumentId;
@@ -94,22 +108,13 @@ export function createTabs(): HTMLElement {
 
             tab.appendChild(label);
             tab.appendChild(close);
-            bar.appendChild(tab);
+            list.appendChild(tab);
 
             if (isActive) {
                 // Keep the active tab visible when there are many
                 queueMicrotask(() => tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }));
             }
         }
-
-        const add = document.createElement('button');
-        add.type = 'button';
-        add.className = 'tabs__add';
-        add.textContent = '+';
-        add.title = 'New diagram';
-        add.setAttribute('aria-label', 'New diagram');
-        add.addEventListener('click', () => openDocument('Untitled'));
-        bar.appendChild(add);
     };
 
     let lastSignature = signature(getState());

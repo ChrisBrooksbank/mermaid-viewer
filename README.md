@@ -16,13 +16,13 @@ A Progressive Web App for viewing and editing [Mermaid](https://mermaid.js.org/)
 - **Multiple Diagrams** - Work on several diagrams in tabs; double-click a tab to rename it
 - **Undo & Version History** - Per-diagram undo/redo, plus snapshots you can save and restore (taken automatically every few minutes while you edit)
 - **Helpful Errors** - Syntax errors show the line number, with a button to jump to it; the last good diagram stays visible
-- **Pan & Zoom** - Mouse wheel to zoom, click and drag to pan
-- **Touch Support** - Pinch to zoom, drag to pan on mobile
+- **Pan & Zoom** - Mouse wheel to zoom, click and drag to pan; diagrams stay centred until you take over, and your zoom is kept while you edit. The zoom badge shows the current level (click it to fit)
+- **Touch Support** - Pinch to zoom, drag to pan on mobile; the editor/diagram divider can be dragged (or moved with the arrow keys)
 - **Starter Templates** - Open a new tab from a template: flowchart, sequence, class, state, ER, Gantt, pie, mindmap, timeline, git graph, and user journey
 - **Share Links** - Copy an edit link, a view-only link, or `<iframe>` embed code; the diagram is compressed into the URL (nothing is sent to a server). View-only links open a read-only viewer that doesn't touch the recipient's saved diagrams
 - **Open & Save Files** - Open (into a new tab) `.mmd`, `.mermaid`, `.md`, or `.txt` files (or drag and drop them); markdown files load their first ` ```mermaid ` block. Save as `.mmd`
 - **Export** - Download or copy to clipboard as SVG or PNG, with a transparent, white, or theme-matched background
-- **Themes** - Light and neon dark app themes, plus any of Mermaid's diagram themes (default, neutral, dark, forest, base)
+- **Themes** - Light and neon dark app themes (following your system setting on first visit), plus any of Mermaid's diagram themes (default, neutral, dark, forest, base)
 - **Fullscreen** - Focus on the diagram with fullscreen mode
 - **Persistent State** - Your diagrams, history, and settings are saved to localStorage
 - **PWA** - Install as a standalone app, works offline
