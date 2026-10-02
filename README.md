@@ -9,6 +9,11 @@ A Progressive Web App for viewing and editing [Mermaid](https://mermaid.js.org/)
 
 **[Live Demo](https://mermaid-viewer-app.netlify.app)**
 
+<p align="center">
+  <img src="docs/screenshot-light.png" alt="Mermaid Viewer in light mode, showing the editor beside a rendered sequence diagram" width="49%">
+  <img src="docs/screenshot-dark.png" alt="Mermaid Viewer in neon dark mode, showing the editor beside a rendered sequence diagram" width="49%">
+</p>
+
 ## Features
 
 - **Live Preview** - See your diagram update as you type (300ms debounce)
@@ -26,6 +31,14 @@ A Progressive Web App for viewing and editing [Mermaid](https://mermaid.js.org/)
 - **Fullscreen** - Focus on the diagram with fullscreen mode
 - **Persistent State** - Your diagrams, history, and settings are saved to localStorage
 - **PWA** - Install as a standalone app, works offline
+
+## On Mobile
+
+<p align="center">
+  <img src="docs/screenshot-mobile.png" alt="Mermaid Viewer on a phone-sized screen" width="260">
+</p>
+
+Pinch to zoom, drag to pan, and install it from your browser to use it like a native app, even offline.
 
 ## Keyboard Shortcuts
 
