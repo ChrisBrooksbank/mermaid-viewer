@@ -6,13 +6,29 @@ import type { FileActions } from '@/types/app';
 import { getState, initializeState, setState, subscribe } from '@core/state';
 import { initKeyboardShortcuts, setDiagramControls, setFileActions } from '@core/keyboard';
 import { isDiagramFile, pickFile, readDiagramFile, saveDiagramFile } from '@core/files';
-import { buildShareUrl, readSharedDiagram } from '@core/share';
-import { createToolbar } from './Toolbar';
+import { buildEmbedCode, buildShareUrl, readShareLink, type ShareLink } from '@core/share';
+import { getActiveDocument, openDocument } from '@core/documents';
+import { createToolbar, createViewerToolbar } from './Toolbar';
 import { createEditor } from './Editor';
 import { createDiagramView } from './DiagramView';
 import { createSplitPane } from './SplitPane';
+import { createTabs } from './Tabs';
 import { showToast } from './Toast';
 import { Logger } from '@utils/logger';
+
+/** File name without its extension, for use as a diagram name */
+function baseName(fileName: string): string {
+    return fileName.replace(/\.[^.]+$/, '') || fileName;
+}
+
+/** A diagram name made safe for use as a file name */
+function fileNameFor(name: string): string {
+    const safe = name
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, '-')
+        .replace(/\s+/g, ' ');
+    return `${safe || 'diagram'}.mmd`;
+}
 
 async function loadFile(file: File): Promise<void> {
     if (!isDiagramFile(file)) {
@@ -20,7 +36,7 @@ async function loadFile(file: File): Promise<void> {
         return;
     }
     try {
-        setState({ markdown: await readDiagramFile(file) });
+        openDocument(baseName(file.name), await readDiagramFile(file));
         showToast(`Opened ${file.name}`);
     } catch (error) {
         showToast(`Could not read ${file.name}`, 'error');
@@ -28,15 +44,23 @@ async function loadFile(file: File): Promise<void> {
     }
 }
 
-async function copyShareLink(): Promise<void> {
+async function copyToClipboard(
+    build: () => Promise<string>,
+    success: string,
+    failure: string
+): Promise<void> {
     try {
-        const url = await buildShareUrl(getState().markdown, window.location.href);
-        await navigator.clipboard.writeText(url);
-        showToast('Share link copied to clipboard');
+        await navigator.clipboard.writeText(await build());
+        showToast(success);
     } catch (error) {
-        showToast('Could not copy share link', 'error');
-        Logger.warn('Failed to copy share link:', String(error));
+        showToast(failure, 'error');
+        Logger.warn(failure, String(error));
     }
+}
+
+/** The page URL without any hash, as the base for share links */
+function appUrl(): string {
+    return window.location.href.split('#')[0];
 }
 
 /** Remove a consumed share hash so reloading doesn't discard later edits */
@@ -74,17 +98,7 @@ function enableFileDrop(target: HTMLElement): void {
     });
 }
 
-export function initApp(container: HTMLElement, sharedMarkdown?: string | null): void {
-    Logger.info('Initializing Mermaid Viewer app');
-
-    // Initialize state from localStorage (or a shared link)
-    initializeState(sharedMarkdown);
-
-    // Create app container
-    const app = document.createElement('div');
-    app.className = 'app';
-
-    // Create components
+function createEditorLayout(app: HTMLElement): void {
     const editor = createEditor();
     const { element: diagramView, controls } = createDiagramView({
         onGoToLine: editor.goToLine,
@@ -94,44 +108,108 @@ export function initApp(container: HTMLElement, sharedMarkdown?: string | null):
         openFile: () => {
             void pickFile().then(file => file && loadFile(file));
         },
-        saveFile: () => saveDiagramFile(getState().markdown),
+        saveFile: () => saveDiagramFile(getState().markdown, fileNameFor(getActiveDocument().name)),
     };
 
     // Register actions for keyboard shortcuts
     setDiagramControls(controls);
     setFileActions(fileActions);
 
+    const shareUrl = (readOnly: boolean) =>
+        buildShareUrl(getState().markdown, appUrl(), { readOnly });
+
     const toolbar = createToolbar({
         diagram: controls,
         files: fileActions,
-        share: () => void copyShareLink(),
+        undo: editor.undo,
+        redo: editor.redo,
+        share: {
+            copyEditLink: () =>
+                void copyToClipboard(
+                    () => shareUrl(false),
+                    'Edit link copied',
+                    'Could not copy link'
+                ),
+            copyViewLink: () =>
+                void copyToClipboard(
+                    () => shareUrl(true),
+                    'View-only link copied',
+                    'Could not copy link'
+                ),
+            copyEmbedCode: () =>
+                void copyToClipboard(
+                    async () => buildEmbedCode(await shareUrl(true)),
+                    'Embed code copied',
+                    'Could not copy embed code'
+                ),
+        },
     });
-    const splitPane = createSplitPane(editor.element, diagramView);
+
+    app.appendChild(toolbar);
+    app.appendChild(createTabs());
+    app.appendChild(createSplitPane(editor.element, diagramView));
+
+    enableFileDrop(app);
+
+    // Opening a share link in an already-open tab only changes the hash
+    window.addEventListener('hashchange', () => {
+        void readShareLink(window.location.hash).then(link => {
+            if (link && !link.readOnly) {
+                openDocument('Shared diagram', link.markdown);
+                clearShareHash();
+            }
+        });
+    });
+}
+
+function createViewerLayout(app: HTMLElement): void {
+    app.classList.add('app--viewer');
+
+    const { element: diagramView, controls } = createDiagramView({ fitOnRender: true });
+    setDiagramControls(controls);
+
+    const openInEditor = () => {
+        void buildShareUrl(getState().markdown, appUrl()).then(url => {
+            window.open(url, '_blank', 'noopener');
+        });
+    };
+
+    app.appendChild(createViewerToolbar(controls, openInEditor));
+    app.appendChild(diagramView);
+
+    window.addEventListener('hashchange', () => {
+        void readShareLink(window.location.hash).then(link => {
+            if (link) setState({ markdown: link.markdown });
+        });
+    });
+}
+
+export function initApp(container: HTMLElement, shareLink?: ShareLink | null): void {
+    Logger.info('Initializing Mermaid Viewer app');
+
+    const readOnly = shareLink?.readOnly ?? false;
+
+    // Initialize state from localStorage (or a shared link)
+    initializeState({ sharedMarkdown: shareLink?.markdown, readOnly });
+
+    // Create app container
+    const app = document.createElement('div');
+    app.className = 'app';
+
+    if (readOnly) {
+        createViewerLayout(app);
+    } else {
+        createEditorLayout(app);
+    }
 
     // Handle fullscreen state
     subscribe(newState => {
         app.classList.toggle('fullscreen', newState.isFullscreen);
     });
 
-    // Assemble app
-    app.appendChild(toolbar);
-    app.appendChild(splitPane);
-
     // Mount to container
     container.innerHTML = '';
     container.appendChild(app);
-
-    enableFileDrop(app);
-
-    // Opening a share link in an already-open tab only changes the hash
-    window.addEventListener('hashchange', () => {
-        void readSharedDiagram(window.location.hash).then(markdown => {
-            if (markdown !== null) {
-                setState({ markdown });
-                clearShareHash();
-            }
-        });
-    });
 
     // Initialize keyboard shortcuts
     initKeyboardShortcuts();

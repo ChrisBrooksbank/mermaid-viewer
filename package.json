@@ -21,6 +21,14 @@
         "prepare": "husky"
     },
     "dependencies": {
+        "@codemirror/autocomplete": "^6.20.3",
+        "@codemirror/commands": "^6.11.1",
+        "@codemirror/language": "^6.12.4",
+        "@codemirror/lint": "^6.9.7",
+        "@codemirror/search": "^6.7.2",
+        "@codemirror/state": "^6.7.6",
+        "@codemirror/view": "^6.43.13",
+        "@lezer/highlight": "^1.2.5",
         "mermaid": "^11.12.2",
         "panzoom": "^9.4.3",
         "zod": "^3.0.0"

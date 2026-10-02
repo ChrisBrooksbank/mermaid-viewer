@@ -13,7 +13,8 @@ export interface MenuItem {
  */
 export function createMenu(
     button: HTMLButtonElement,
-    content: MenuItem[] | HTMLElement
+    content: MenuItem[] | HTMLElement,
+    { onOpen }: { onOpen?: () => void } = {}
 ): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.className = 'menu';
@@ -54,6 +55,7 @@ export function createMenu(
     };
 
     function open() {
+        onOpen?.();
         // Fixed positioning so the panel isn't clipped by a scrolling toolbar
         const rect = button.getBoundingClientRect();
         panel.style.top = `${rect.bottom + 4}px`;

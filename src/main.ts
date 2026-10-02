@@ -1,7 +1,7 @@
 import { loadConfig } from '@config';
 import { Logger } from '@utils/logger';
 import { clearShareHash, initApp } from '@/components/App';
-import { readSharedDiagram } from '@core/share';
+import { readShareLink } from '@core/share';
 import { registerSW } from 'virtual:pwa-register';
 import '@/styles/main.css';
 
@@ -12,9 +12,10 @@ async function init() {
 
         const app = document.getElementById('app');
         if (app) {
-            const sharedMarkdown = await readSharedDiagram(window.location.hash);
-            initApp(app, sharedMarkdown);
-            if (sharedMarkdown !== null) clearShareHash();
+            const shareLink = await readShareLink(window.location.hash);
+            initApp(app, shareLink);
+            // View-only links keep their hash so reloading (or an embed) still works
+            if (shareLink && !shareLink.readOnly) clearShareHash();
         } else {
             Logger.error('App container not found');
         }

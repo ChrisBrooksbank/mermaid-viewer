@@ -5,7 +5,9 @@
 import type { DiagramViewControls, ExportBackground, FileActions, MermaidTheme } from '@/types/app';
 import { getState, setState, subscribe, applyTheme } from '@core/state';
 import { copyPng, copySvg, downloadPng, downloadSvg, resolveBackground } from '@core/export';
-import { TEMPLATES, type DiagramTemplate } from '@core/templates';
+import { TEMPLATES } from '@core/templates';
+import { openDocument } from '@core/documents';
+import { createHistoryPanel } from './HistoryPanel';
 import { createMenu } from './Menu';
 import { showToast } from './Toast';
 
@@ -25,12 +27,24 @@ const icons = {
     template: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
     share: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
     settings: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    undo: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>`,
+    redo: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>`,
+    history: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    edit: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`,
 };
+
+export interface ShareActions {
+    copyEditLink: () => void;
+    copyViewLink: () => void;
+    copyEmbedCode: () => void;
+}
 
 export interface ToolbarActions {
     diagram: DiagramViewControls;
     files: FileActions;
-    share: () => void;
+    share: ShareActions;
+    undo: () => void;
+    redo: () => void;
 }
 
 function createButton(icon: string, title: string, onClick?: () => void): HTMLButtonElement {
@@ -117,15 +131,6 @@ function createSettingsPanel(): HTMLElement {
     return panel;
 }
 
-function loadTemplate(template: DiagramTemplate): void {
-    const current = getState().markdown.trim();
-    const isUnchangedTemplate = TEMPLATES.some(t => t.code.trim() === current);
-    if (current && !isUnchangedTemplate && !window.confirm('Replace the current diagram?')) {
-        return;
-    }
-    setState({ markdown: template.code });
-}
-
 async function runExport(action: (background: string | null) => unknown, done?: string) {
     const { exportBackground, theme } = getState();
     try {
@@ -136,33 +141,14 @@ async function runExport(action: (background: string | null) => unknown, done?: 
     }
 }
 
-export function createToolbar(actions: ToolbarActions): HTMLElement {
-    const { diagram: diagramControls, files } = actions;
-
-    const toolbar = document.createElement('div');
-    toolbar.className = 'toolbar';
-
+function createTitle(): HTMLElement {
     const title = document.createElement('span');
     title.className = 'toolbar__title';
     title.textContent = 'Mermaid Viewer';
+    return title;
+}
 
-    // File controls
-    const fileGroup = document.createElement('div');
-    fileGroup.className = 'toolbar__group';
-    fileGroup.appendChild(createButton(icons.open, 'Open File (Ctrl+O)', files.openFile));
-    fileGroup.appendChild(createButton(icons.save, 'Save as .mmd (Ctrl+S)', files.saveFile));
-    fileGroup.appendChild(
-        createMenu(
-            createButton(icons.template, 'Templates'),
-            TEMPLATES.map(template => ({
-                label: template.name,
-                onSelect: () => loadTemplate(template),
-            }))
-        )
-    );
-    fileGroup.appendChild(createButton(icons.share, 'Copy Share Link', actions.share));
-
-    // Zoom controls
+function createZoomGroup(diagramControls: DiagramViewControls): HTMLElement {
     const zoomGroup = document.createElement('div');
     zoomGroup.className = 'toolbar__group';
     zoomGroup.appendChild(createButton(icons.zoomIn, 'Zoom In (Ctrl++)', diagramControls.zoomIn));
@@ -173,11 +159,10 @@ export function createToolbar(actions: ToolbarActions): HTMLElement {
         createButton(icons.reset, 'Reset Zoom (Ctrl+0)', diagramControls.resetZoom)
     );
     zoomGroup.appendChild(createButton(icons.fit, 'Fit to View', diagramControls.fitToView));
+    return zoomGroup;
+}
 
-    // View controls
-    const viewGroup = document.createElement('div');
-    viewGroup.className = 'toolbar__group';
-
+function createThemeButton(): HTMLButtonElement {
     const themeBtn = createButton(
         getState().theme === 'dark' ? icons.sun : icons.moon,
         'Toggle Theme',
@@ -187,43 +172,118 @@ export function createToolbar(actions: ToolbarActions): HTMLElement {
             applyTheme(newTheme);
         }
     );
+    subscribe(state => {
+        themeBtn.innerHTML = state.theme === 'dark' ? icons.sun : icons.moon;
+    });
+    return themeBtn;
+}
 
+function createFullscreenButton(): HTMLButtonElement {
     const fullscreenBtn = createButton(icons.fullscreen, 'Fullscreen (Ctrl+Enter)', () => {
         setState({ isFullscreen: !getState().isFullscreen });
     });
-
-    viewGroup.appendChild(themeBtn);
-    viewGroup.appendChild(fullscreenBtn);
-    viewGroup.appendChild(
-        createMenu(createButton(icons.settings, 'Settings'), createSettingsPanel())
-    );
-
-    // Export menu
-    const exportMenu = createMenu(createButton(icons.download, 'Export'), [
-        { label: 'Download SVG', onSelect: () => void runExport(downloadSvg) },
-        { label: 'Download PNG', onSelect: () => void runExport(downloadPng) },
-        { label: 'Copy SVG', onSelect: () => void runExport(copySvg, 'SVG copied') },
-        { label: 'Copy PNG', onSelect: () => void runExport(copyPng, 'PNG copied') },
-    ]);
-
-    // Update button states on state change
     subscribe(state => {
-        themeBtn.innerHTML = state.theme === 'dark' ? icons.sun : icons.moon;
         fullscreenBtn.innerHTML = state.isFullscreen ? icons.exitFullscreen : icons.fullscreen;
         fullscreenBtn.title = state.isFullscreen
             ? 'Exit Fullscreen (Escape)'
             : 'Fullscreen (Ctrl+Enter)';
         fullscreenBtn.setAttribute('aria-label', fullscreenBtn.title);
     });
+    return fullscreenBtn;
+}
 
-    toolbar.appendChild(title);
+function createExportMenu(): HTMLElement {
+    return createMenu(createButton(icons.download, 'Export'), [
+        { label: 'Download SVG', onSelect: () => void runExport(downloadSvg) },
+        { label: 'Download PNG', onSelect: () => void runExport(downloadPng) },
+        { label: 'Copy SVG', onSelect: () => void runExport(copySvg, 'SVG copied') },
+        { label: 'Copy PNG', onSelect: () => void runExport(copyPng, 'PNG copied') },
+    ]);
+}
+
+export function createToolbar(actions: ToolbarActions): HTMLElement {
+    const { files, share } = actions;
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'toolbar';
+
+    // File controls
+    const fileGroup = document.createElement('div');
+    fileGroup.className = 'toolbar__group';
+    fileGroup.appendChild(createButton(icons.open, 'Open File (Ctrl+O)', files.openFile));
+    fileGroup.appendChild(createButton(icons.save, 'Save as .mmd (Ctrl+S)', files.saveFile));
+    fileGroup.appendChild(
+        createMenu(
+            createButton(icons.template, 'New from Template'),
+            TEMPLATES.map(template => ({
+                label: template.name,
+                onSelect: () => openDocument(template.name, template.code),
+            }))
+        )
+    );
+    fileGroup.appendChild(
+        createMenu(createButton(icons.share, 'Share'), [
+            { label: 'Copy edit link', onSelect: share.copyEditLink },
+            { label: 'Copy view-only link', onSelect: share.copyViewLink },
+            { label: 'Copy embed code', onSelect: share.copyEmbedCode },
+        ])
+    );
+
+    // Edit history
+    const historyGroup = document.createElement('div');
+    historyGroup.className = 'toolbar__group';
+    historyGroup.appendChild(createButton(icons.undo, 'Undo (Ctrl+Z)', actions.undo));
+    historyGroup.appendChild(createButton(icons.redo, 'Redo (Ctrl+Shift+Z)', actions.redo));
+    const history = createHistoryPanel();
+    historyGroup.appendChild(
+        createMenu(createButton(icons.history, 'Version History'), history.element, {
+            onOpen: history.refresh,
+        })
+    );
+
+    // View controls
+    const viewGroup = document.createElement('div');
+    viewGroup.className = 'toolbar__group';
+    viewGroup.appendChild(createThemeButton());
+    viewGroup.appendChild(createFullscreenButton());
+    viewGroup.appendChild(
+        createMenu(createButton(icons.settings, 'Settings'), createSettingsPanel())
+    );
+
+    toolbar.appendChild(createTitle());
     toolbar.appendChild(fileGroup);
     toolbar.appendChild(createSeparator());
-    toolbar.appendChild(zoomGroup);
+    toolbar.appendChild(historyGroup);
+    toolbar.appendChild(createSeparator());
+    toolbar.appendChild(createZoomGroup(actions.diagram));
     toolbar.appendChild(createSeparator());
     toolbar.appendChild(viewGroup);
     toolbar.appendChild(createSeparator());
-    toolbar.appendChild(exportMenu);
+    toolbar.appendChild(createExportMenu());
+
+    return toolbar;
+}
+
+/**
+ * Compact toolbar for view-only links and embeds
+ */
+export function createViewerToolbar(
+    diagramControls: DiagramViewControls,
+    openInEditor: () => void
+): HTMLElement {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'toolbar toolbar--viewer';
+
+    const viewGroup = document.createElement('div');
+    viewGroup.className = 'toolbar__group';
+    viewGroup.appendChild(createThemeButton());
+    viewGroup.appendChild(createExportMenu());
+    viewGroup.appendChild(createButton(icons.edit, 'Open in Editor', openInEditor));
+
+    toolbar.appendChild(createTitle());
+    toolbar.appendChild(createZoomGroup(diagramControls));
+    toolbar.appendChild(createSeparator());
+    toolbar.appendChild(viewGroup);
 
     return toolbar;
 }

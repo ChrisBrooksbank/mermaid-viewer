@@ -7,7 +7,6 @@ import panzoom, { type PanZoom } from 'panzoom';
 import type { AppState, DiagramViewControls } from '@/types/app';
 import { getState, resolveMermaidTheme, setState, subscribe } from '@core/state';
 import { parseMermaidError } from '@core/errors';
-import { debounce } from '@utils/helpers';
 import { Logger } from '@utils/logger';
 
 const ZOOM_STEP = 0.25;
@@ -17,6 +16,8 @@ const MAX_ZOOM = 5;
 interface DiagramViewOptions {
     /** Called when the user asks to jump to the line an error points at */
     onGoToLine?: (line: number) => void;
+    /** Fit the diagram to the view after each render (view-only mode) */
+    fitOnRender?: boolean;
 }
 
 /** The app's neon styling only applies when the diagram theme follows the app theme */
@@ -47,6 +48,10 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
     let diagramId = 0;
     let lastRenderedMarkdown = '';
     let lastRenderedTheme = resolveMermaidTheme(getState());
+    let lastDocumentId = getState().activeDocumentId;
+    /** Document the currently displayed diagram belongs to */
+    let displayedDocumentId: string | null = null;
+    let renderTimer: ReturnType<typeof setTimeout> | undefined;
 
     const initPanzoom = () => {
         if (panzoomInstance) {
@@ -99,12 +104,20 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
         Logger.warn('Mermaid render error:', message);
     };
 
+    const clearDiagram = () => {
+        panzoomInstance?.dispose();
+        panzoomInstance = null;
+        container.innerHTML = '';
+        displayedDocumentId = null;
+    };
+
     const renderDiagram = async (markdown: string) => {
         const renderId = ++diagramId;
+        const documentId = getState().activeDocumentId;
         lastRenderedMarkdown = markdown;
 
         if (!markdown.trim()) {
-            container.innerHTML = '';
+            clearDiagram();
             hideError();
             return;
         }
@@ -126,21 +139,26 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
             // Only replace content after new SVG is ready (prevents flash);
             // on error the last good diagram stays visible
             container.innerHTML = svg;
+            displayedDocumentId = documentId;
             hideError();
 
             // Initialize panzoom on new SVG
             initPanzoom();
+            if (options.fitOnRender) controls.fitToView();
 
             Logger.debug('Diagram rendered successfully');
         } catch (error) {
             if (renderId !== diagramId) return;
+            // Keep the last good diagram only if it is this document's
+            if (displayedDocumentId !== documentId) clearDiagram();
             showError(error);
         }
     };
 
-    const debouncedRender = debounce((markdown: string) => {
-        void renderDiagram(markdown);
-    }, 300);
+    const scheduleRender = (markdown: string, delay: number) => {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(() => void renderDiagram(markdown), delay);
+    };
 
     // Subscribe to state changes - re-render if markdown or diagram theme changed
     subscribe(state => {
@@ -154,14 +172,14 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
             lastRenderedTheme = theme;
         }
 
-        if (markdownChanged || themeChanged) {
-            debouncedRender(state.markdown);
+        if (state.activeDocumentId !== lastDocumentId) {
+            // Switching diagrams: show the new one straight away
+            lastDocumentId = state.activeDocumentId;
+            scheduleRender(state.markdown, 0);
+        } else if (markdownChanged || themeChanged) {
+            scheduleRender(state.markdown, 300);
         }
     });
-
-    // Initial render
-    view.classList.toggle('diagram-view--neon', usesNeonStyle(getState()));
-    void renderDiagram(getState().markdown);
 
     const zoomTo = (scale: number) => {
         if (!panzoomInstance) return;
@@ -190,24 +208,40 @@ export function createDiagramView(options: DiagramViewOptions = {}): {
             }
         },
         fitToView: () => {
-            if (panzoomInstance) {
-                const svg = container.querySelector('svg');
-                if (svg) {
-                    const containerRect = container.getBoundingClientRect();
-                    const svgRect = svg.getBoundingClientRect();
-                    // The rect is already scaled by the current zoom level
-                    const currentScale = panzoomInstance.getTransform().scale;
-                    const scale =
-                        Math.min(
-                            containerRect.width / (svgRect.width / currentScale),
-                            containerRect.height / (svgRect.height / currentScale)
-                        ) * 0.9;
-                    panzoomInstance.moveTo(0, 0);
-                    panzoomInstance.zoomAbs(0, 0, Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale)));
-                }
-            }
+            const svg = container.querySelector('svg');
+            if (!panzoomInstance || !svg) return;
+
+            const containerRect = container.getBoundingClientRect();
+            const svgRect = svg.getBoundingClientRect();
+            const transform = panzoomInstance.getTransform();
+            if (svgRect.width === 0 || svgRect.height === 0) return;
+
+            // The rect is already scaled and moved by the current transform
+            const width = svgRect.width / transform.scale;
+            const height = svgRect.height / transform.scale;
+            const layoutLeft = svgRect.left - transform.x;
+            const layoutTop = svgRect.top - transform.y;
+
+            const scale = Math.min(
+                MAX_ZOOM,
+                Math.max(
+                    MIN_ZOOM,
+                    Math.min(containerRect.width / width, containerRect.height / height) * 0.9
+                )
+            );
+
+            // Centre the scaled diagram in the container
+            panzoomInstance.zoomAbs(0, 0, scale);
+            panzoomInstance.moveTo(
+                containerRect.left + (containerRect.width - width * scale) / 2 - layoutLeft,
+                containerRect.top + (containerRect.height - height * scale) / 2 - layoutTop
+            );
         },
     };
+
+    // Initial render
+    view.classList.toggle('diagram-view--neon', usesNeonStyle(getState()));
+    void renderDiagram(getState().markdown);
 
     return { element: view, controls };
 }

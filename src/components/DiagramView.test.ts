@@ -87,4 +87,20 @@ describe('DiagramView', () => {
         await flush();
         expect(element.querySelector('#stale')).toBeNull();
     });
+
+    it("doesn't show another diagram's preview when switching to a broken one", async () => {
+        const { openDocument, switchDocument } = await import('@core/documents');
+        const firstId = getState().activeDocumentId;
+        const { element } = createDiagramView();
+        await flush();
+        expect(element.querySelector('#ok')).not.toBeNull();
+
+        openDocument('Broken', 'graph TD\n A -->');
+        mermaidMock.parse.mockRejectedValueOnce(new Error('Parse error on line 2:\nbad'));
+        await vi.waitFor(() => expect(getState().error).toContain('line 2'));
+        expect(element.querySelector('svg')).toBeNull();
+
+        switchDocument(firstId);
+        await vi.waitFor(() => expect(element.querySelector('#ok')).not.toBeNull());
+    });
 });

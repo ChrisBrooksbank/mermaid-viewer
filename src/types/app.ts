@@ -10,8 +10,30 @@ export type MermaidTheme = 'auto' | 'default' | 'neutral' | 'dark' | 'forest' | 
 /** Background applied to exported SVG/PNG images */
 export type ExportBackground = 'transparent' | 'white' | 'theme';
 
-export interface AppState {
+export interface DiagramSnapshot {
+    id: string;
+    createdAt: number;
     markdown: string;
+    /** Taken automatically (periodically or before a restore) rather than by the user */
+    auto: boolean;
+}
+
+export interface DiagramDocument {
+    id: string;
+    name: string;
+    markdown: string;
+    updatedAt: number;
+    /** Newest first */
+    snapshots: DiagramSnapshot[];
+}
+
+export interface AppState {
+    /** Source of the active document */
+    markdown: string;
+    documents: DiagramDocument[];
+    activeDocumentId: string;
+    /** View-only mode (opened from a view/embed link); nothing is persisted */
+    readOnly: boolean;
     theme: AppTheme;
     mermaidTheme: MermaidTheme;
     exportBackground: ExportBackground;

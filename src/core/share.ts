@@ -43,23 +43,46 @@ export async function decodeDiagram(encoded: string): Promise<string> {
     return new TextDecoder().decode(decompressed);
 }
 
-export async function buildShareUrl(markdown: string, baseUrl: string): Promise<string> {
+const MODE_KEY = 'mode';
+const VIEW_MODE = 'view';
+
+export interface ShareLink {
+    markdown: string;
+    /** Opened as a view-only (or embedded) diagram */
+    readOnly: boolean;
+}
+
+export async function buildShareUrl(
+    markdown: string,
+    baseUrl: string,
+    { readOnly = false } = {}
+): Promise<string> {
     const url = new URL(baseUrl);
-    url.hash = `${HASH_KEY}=${await encodeDiagram(markdown)}`;
+    const params = new URLSearchParams({ [HASH_KEY]: await encodeDiagram(markdown) });
+    if (readOnly) params.set(MODE_KEY, VIEW_MODE);
+    url.hash = params.toString();
     return url.toString();
+}
+
+export function buildEmbedCode(viewUrl: string): string {
+    const src = viewUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    return `<iframe src="${src}" width="800" height="600" style="border: 0" title="Mermaid diagram" loading="lazy"></iframe>`;
 }
 
 /**
  * Read a shared diagram from a URL hash. Returns null if the hash
  * holds no diagram or can't be decoded.
  */
-export async function readSharedDiagram(hash: string): Promise<string | null> {
+export async function readShareLink(hash: string): Promise<ShareLink | null> {
     const params = new URLSearchParams(hash.replace(/^#/, ''));
     const encoded = params.get(HASH_KEY);
     if (!encoded) return null;
 
     try {
-        return await decodeDiagram(encoded);
+        return {
+            markdown: await decodeDiagram(encoded),
+            readOnly: params.get(MODE_KEY) === VIEW_MODE,
+        };
     } catch {
         return null;
     }
