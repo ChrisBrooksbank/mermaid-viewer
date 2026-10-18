@@ -10,6 +10,10 @@ A Progressive Web App for viewing and editing [Mermaid](https://mermaid.js.org/)
 **[Live Demo](https://mermaid-viewer-app.netlify.app)**
 
 <p align="center">
+  <img src="docs/demo.gif" alt="Animated demo: typing a Mermaid flowchart that renders live as you type, switching to neon dark mode, then zooming and panning the diagram" width="100%">
+</p>
+
+<p align="center">
   <img src="docs/screenshot-light.png" alt="Mermaid Viewer in light mode, showing the editor beside a rendered sequence diagram" width="49%">
   <img src="docs/screenshot-dark.png" alt="Mermaid Viewer in neon dark mode, showing the editor beside a rendered sequence diagram" width="49%">
 </p>
