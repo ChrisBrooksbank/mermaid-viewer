@@ -1,5 +1,9 @@
 # Mermaid Viewer
 
+<!-- hub-link -->
+> Part of [Chris's app hub](https://chrisbrooksbank-hub.netlify.app) - a directory of all my deployed apps.
+<!-- /hub-link -->
+
 [![Netlify Status](https://api.netlify.com/api/v1/badges/5b307190-037a-4f87-bfca-fe03d16784ff/deploy-status)](https://app.netlify.com/sites/mermaid-viewer-app/deploys)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite)](https://vitejs.dev/)
